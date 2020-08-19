@@ -381,6 +381,35 @@ impl<F: Field + PrimeField, G: GroupType<F>> ConditionalEqGadget<F> for Constrai
                 }
                 Ok(())
             }
+            (
+                ConstrainedValue::CircuitExpression(id_1, members_1),
+                ConstrainedValue::CircuitExpression(id_2, members_2),
+            ) => {
+                // Return an error if we are trying to compare different circuits
+                if id_1.ne(id_2) {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
+                for (i, (left, right)) in members_1.into_iter().zip(members_2.into_iter()).enumerate() {
+                    let name_left = &left.0;
+                    let name_right = &right.0;
+
+                    if name_left.ne(name_right) {
+                        return Err(SynthesisError::Unsatisfiable);
+                    }
+
+                    let value_left = &left.1;
+                    let value_right = &right.1;
+
+                    value_left.conditional_enforce_equal(
+                        cs.ns(|| format!("circuit index {}", i)),
+                        value_right,
+                        condition,
+                    )?;
+                }
+
+                Ok(())
+            }
             (_, _) => return Err(SynthesisError::Unsatisfiable),
         }
     }
